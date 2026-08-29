@@ -1,0 +1,2 @@
+# checkin.py 仅使用 Python 标准库, 无需第三方依赖。
+# 运行需要系统已安装 adb (android-tools / platform-tools)。

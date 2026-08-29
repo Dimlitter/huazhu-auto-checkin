@@ -1,0 +1,8 @@
+artifacts/
+config.env
+__pycache__/
+*.pyc
+.venv/
+
+# Claude Code 本地配置(不入库)
+.claude/

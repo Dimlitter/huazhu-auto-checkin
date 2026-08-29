@@ -1,0 +1,29 @@
+services:
+  huazhu-checkin:
+    build: .
+    image: huazhu-checkin:latest
+    container_name: huazhu-checkin
+    restart: unless-stopped
+    # host 网络便于连接局域网内手机 / 同机 redroid 的 adb 端口
+    network_mode: host
+    environment:
+      TZ: Asia/Shanghai
+      MODE: "--loop"
+      RUN_AT: "09:05"
+      # 目标安卓设备 adb 地址 (改成你的): 手机执行过 adb tcpip 5555 后填其 ip:5555
+      ADB_HOST: "192.168.1.50:5555"
+      USE_SU: "0"
+      # 坐标: 建议用 --calibrate 得到绝对坐标后填这里(留空则用比例)
+      TILE_XY: ""
+      BUTTON_XY: ""
+      TILE_FRAC: "0.14,0.81"
+      BUTTON_FRAC: "0.50,0.83"
+      # PushPlus 微信推送(可选): 填 token 即启用
+      PUSHPLUS_TOKEN: ""
+      PUSHPLUS_TOPIC: ""
+      NOTIFY_ON: "all"
+      DEBUG: "0"
+    volumes:
+      - ./artifacts:/app/artifacts
+      # 可选: 也可用 config.env 提供配置(环境变量优先)
+      # - ./config.env:/app/config.env:ro

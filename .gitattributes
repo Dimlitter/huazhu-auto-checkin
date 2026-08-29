@@ -1,0 +1,4 @@
+# 统一用 LF, 保证脚本在 Linux/Docker 正常运行
+* text=auto eol=lf
+*.png -text
+*.jpg -text
