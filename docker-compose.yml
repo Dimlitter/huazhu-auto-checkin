@@ -1,29 +1,50 @@
 services:
-  huazhu-checkin:
+  # 安卓运行环境 (redroid: 在 Docker 里跑安卓)
+  # 需宿主内核支持 binder, 见 README「宿主机准备」。
+  redroid:
+    # 镜像需匹配"宿主架构 + APK 架构":
+    #   - arm64 服务器: redroid/redroid:13.0.0_64only
+    #   - x86_64 服务器跑 arm APK(华住多为 arm): 需带指令翻译的镜像,
+    #     如 redroid/redroid:13.0.0-ndk_translation 或社区 magisk+translation 镜像
+    image: redroid/redroid:13.0.0_64only
+    container_name: redroid
+    privileged: true
+    restart: unless-stopped
+    volumes:
+      - ./redroid-data:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+      # 反模拟器检测严重时可尝试带 magisk 的社区镜像并开启伪装
+    ports:
+      - "5555:5555"   # 暴露 adb, 便于一次性用 scrcpy 远程登录
+
+  # 签到调度: 连接 redroid, 安装 APK, 每日自动签到
+  checkin:
     build: .
     image: huazhu-checkin:latest
     container_name: huazhu-checkin
     restart: unless-stopped
-    # host 网络便于连接局域网内手机 / 同机 redroid 的 adb 端口
-    network_mode: host
+    depends_on:
+      - redroid
     environment:
       TZ: Asia/Shanghai
       MODE: "--loop"
       RUN_AT: "09:05"
-      # 目标安卓设备 adb 地址 (改成你的): 手机执行过 adb tcpip 5555 后填其 ip:5555
-      ADB_HOST: "192.168.1.50:5555"
+      ADB_HOST: "redroid:5555"      # 同 compose 网络内直连
       USE_SU: "0"
-      # 坐标: 建议用 --calibrate 得到绝对坐标后填这里(留空则用比例)
+      # redroid 720x1280 的坐标: 首次用 --calibrate 校准后填这里
       TILE_XY: ""
       BUTTON_XY: ""
       TILE_FRAC: "0.14,0.81"
       BUTTON_FRAC: "0.50,0.83"
-      # PushPlus 微信推送(可选): 填 token 即启用
+      # PushPlus 微信推送(可选)
       PUSHPLUS_TOKEN: ""
       PUSHPLUS_TOPIC: ""
       NOTIFY_ON: "all"
       DEBUG: "0"
     volumes:
-      - ./artifacts:/app/artifacts
-      # 可选: 也可用 config.env 提供配置(环境变量优先)
-      # - ./config.env:/app/config.env:ro
+      - ./artifacts:/app/artifacts   # 签到截图输出
+      - ./apk:/app/apk:ro            # 把华住会 apk 放这里, 首次自动安装
