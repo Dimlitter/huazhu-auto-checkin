@@ -23,6 +23,8 @@ services:
 
   # 签到调度: 连接 redroid, 安装 APK, 每日自动签到
   checkin:
+    # 本地构建; 或改用预构建镜像:
+    #   image: ghcr.io/dimlitter/huazhu-auto-checkin:latest
     build: .
     image: huazhu-checkin:latest
     container_name: huazhu-checkin

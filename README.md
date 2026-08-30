@@ -1,5 +1,7 @@
 # 华住会 自动签到（设备端自动化 · 全 Docker）
 
+[![build-and-publish](https://github.com/Dimlitter/huazhu-auto-checkin/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Dimlitter/huazhu-auto-checkin/actions/workflows/docker-publish.yml)
+
 在 **Linux 服务器上用 Docker 一站式运行**：`docker compose` 同时拉起「安卓环境(redroid) + 签到调度」，**无需任何手机**。通过 `adb` 驱动容器内已登录的华住会 App，冷启动 → 进入签到页 → 点击签到 → 截图验证 → 可选微信推送。
 
 > 完成一次性引导（放 APK、登录一次、校准坐标）后，日常只需 `docker compose up -d`，全自动无人值守。
@@ -78,6 +80,14 @@ docker compose run --rm -e MODE=--calibrate checkin
 #   TILE_XY: "x,y"      BUTTON_XY: "x,y"
 docker compose up -d          # 用新坐标重启
 ```
+
+### 使用预构建镜像（免本地 build，可选）
+
+GitHub Actions 已把 checkin 镜像发布到 GHCR（多架构 amd64/arm64）。把 `docker-compose.yml` 里 `checkin` 服务的 `build: .` 换成：
+```yaml
+    image: ghcr.io/dimlitter/huazhu-auto-checkin:latest
+```
+即可直接拉取，无需本地构建。（首次可能需在 GitHub 仓库 Packages 里把该镜像设为 Public，或 `docker login ghcr.io` 后拉取。）
 
 ### 5.（可选）微信推送
 在 [pushplus.plus](https://www.pushplus.plus) 用微信登录拿 token，填到 `docker-compose.yml` 的 `PUSHPLUS_TOKEN`，`docker compose up -d` 生效。
