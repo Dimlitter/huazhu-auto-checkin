@@ -1,52 +1,22 @@
 services:
-  # 安卓运行环境 (redroid: 在 Docker 里跑安卓)
-  # 需宿主内核支持 binder, 见 README「宿主机准备」。
-  redroid:
-    # 镜像需匹配"宿主架构 + APK 架构":
-    #   - arm64 服务器: redroid/redroid:13.0.0_64only
-    #   - x86_64 服务器跑 arm APK(华住多为 arm): 需带指令翻译的镜像,
-    #     如 redroid/redroid:13.0.0-ndk_translation 或社区 magisk+translation 镜像
-    image: redroid/redroid:13.0.0_64only
-    container_name: redroid
-    privileged: true
-    restart: unless-stopped
-    volumes:
-      - ./redroid-data:/data
-    command:
-      - androidboot.redroid_width=720
-      - androidboot.redroid_height=1280
-      - androidboot.redroid_dpi=320
-      - androidboot.redroid_gpu_mode=guest
-      # 反模拟器检测严重时可尝试带 magisk 的社区镜像并开启伪装
-    ports:
-      - "5555:5555"   # 暴露 adb, 便于一次性用 scrcpy 远程登录
-
-  # 签到调度: 连接 redroid, 安装 APK, 每日自动签到
-  checkin:
-    # 本地构建; 或改用预构建镜像:
-    #   image: ghcr.io/dimlitter/huazhu-auto-checkin:latest
+  huazhu-checkin:
     build: .
+    # 或直接用预构建镜像(免本地 build):
+    #   image: ghcr.io/dimlitter/huazhu-auto-checkin:latest
     image: huazhu-checkin:latest
     container_name: huazhu-checkin
     restart: unless-stopped
-    depends_on:
-      - redroid
     environment:
       TZ: Asia/Shanghai
-      MODE: "--loop"
-      RUN_AT: "09:05"
-      ADB_HOST: "redroid:5555"      # 同 compose 网络内直连
-      USE_SU: "0"
-      # redroid 720x1280 的坐标: 首次用 --calibrate 校准后填这里
-      TILE_XY: ""
-      BUTTON_XY: ""
-      TILE_FRAC: "0.14,0.81"
-      BUTTON_FRAC: "0.50,0.83"
+      MODE: "--loop"          # --loop 常驻定时; --once 执行一次
+      RUN_AT: "09:05"         # 每天签到时间
+      HZ_TOKEN: "在这里填你的_userToken"   # 必填, 见 README 获取方法; 多账号用 & 分隔
+      # 可选: 持久化 token, 支持服务器滑动续期时自动保存新 token
+      # HZ_TOKEN_FILE: "/app/data/token.txt"
       # PushPlus 微信推送(可选)
       PUSHPLUS_TOKEN: ""
       PUSHPLUS_TOPIC: ""
-      NOTIFY_ON: "all"
+      NOTIFY_ON: "all"        # all / fail / success
       DEBUG: "0"
     volumes:
-      - ./artifacts:/app/artifacts   # 签到截图输出
-      - ./apk:/app/apk:ro            # 把华住会 apk 放这里, 首次自动安装
+      - ./data:/app/data      # 持久化 token / 运行数据

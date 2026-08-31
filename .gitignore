@@ -1,12 +1,9 @@
-artifacts/
 config.env
+data/
 __pycache__/
 *.pyc
 .venv/
 
 # Claude Code 本地配置(不入库)
 .claude/
-
-# redroid 安卓数据 & APK 二进制(不入库)
-redroid-data/
-apk/*.apk
+artifacts/
