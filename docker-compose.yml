@@ -10,6 +10,9 @@ services:
       TZ: Asia/Shanghai
       MODE: "--loop"          # --loop 常驻定时; --once 执行一次
       RUN_AT: "09:05"         # 每天签到时间
+      RANDOM_DELAY: "1800"    # 触发后随机延迟 0~秒 错峰避免 429 (默认 30 分钟, 0 关闭)
+      RETRY_TIMES: "3"        # 429/5xx/网络异常重试次数
+      RETRY_DELAY: "60"       # 重试基础间隔(秒, 按次线性递增)
       HZ_TOKEN: "在这里填你的_userToken"   # 必填, 见 README 获取方法; 多账号用 & 分隔
       # 可选: 持久化 token, 支持服务器滑动续期时自动保存新 token
       # HZ_TOKEN_FILE: "/app/data/token.txt"
