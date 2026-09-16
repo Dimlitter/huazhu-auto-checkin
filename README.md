@@ -12,6 +12,7 @@
 - 👥 支持多账号
 - 🔁 支持服务器滑动续期时自动保存新 token
 - ⏱️ 定时触发后随机延迟错峰，并对 429/5xx/网络异常自动延时重试
+- 🐉 适配青龙面板（QingLong）：读面板变量、对接其统一通知
 
 ## 原理（抓包实证）
 
@@ -64,7 +65,38 @@
 
 ## 三、部署
 
-### 方式 A：Docker（推荐）
+脚本很轻（单文件、纯标准库），**优先源码运行**；用青龙的直接加进去；Docker 属于杀鸡用牛刀，按需。
+
+### 方式 A：源码直接运行（推荐）
+
+```bash
+git clone git@github.com:Dimlitter/huazhu-auto-checkin.git
+cd huazhu-auto-checkin
+cp config.env.example config.env     # 填 HZ_TOKEN 等
+python3 checkin.py --once            # 执行一次(退出码 0=成功/已签,1=失败,2=未配置)
+python3 checkin.py --loop            # 常驻自带定时, 每天 RUN_AT 执行
+```
+
+仅需 Python 3，无第三方依赖、无需 `pip install`。常驻方式二选一：
+
+- **自带定时(简单)**：`nohup python3 checkin.py --loop &`，或写个 systemd service 守护。
+- **交给系统 cron(省资源, 用 --once)**：`crontab -e` 加一行
+  ```
+  5 9 * * * cd /path/to/huazhu-auto-checkin && python3 checkin.py --once >> data/checkin.log 2>&1
+  ```
+
+### 方式 B：青龙面板（QingLong）
+
+脚本已适配青龙：读面板环境变量、对接青龙统一通知、cron 驱动跑一次。
+
+1. **拉脚本**（二选一）
+   - 订阅（推荐）：青龙「订阅管理」新建，仓库 `https://github.com/Dimlitter/huazhu-auto-checkin.git`，白名单 `checkin.py`；脚本顶部已带 `cron: 5 9 * * *`，可自动建任务。
+   - 手动：「脚本管理」上传 `checkin.py` → 「定时任务」新建，命令 `task checkin.py`，cron 自定（如 `5 9 * * *`）。
+2. **配环境变量**（青龙「环境变量」）：`HZ_TOKEN`（必填，多账号用 `&` 分隔）；可选 `RANDOM_DELAY` / `RETRY_TIMES` 等。
+3. **通知**：无需填 `PUSHPLUS_TOKEN`——脚本自动走**青龙统一通知**（在青龙「通知设置」里配 PushPlus / Telegram 等即可）。
+4. 青龙下 `--once` 会自动按 `RANDOM_DELAY` 随机错峰（默认 30 分钟内）；不想让任务挂这么久，设 `RANDOM_DELAY=0` 并靠 cron 分散即可。
+
+### 方式 C：Docker（可选）
 
 ```bash
 git clone git@github.com:Dimlitter/huazhu-auto-checkin.git
@@ -74,22 +106,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-免本地构建：把 compose 里 `build: .` 换成 `image: ghcr.io/dimlitter/huazhu-auto-checkin:latest`。
-
-手动签到一次：
-```bash
-docker compose run --rm -e MODE=--once huazhu-checkin
-```
-
-### 方式 B：源码直接运行
-
-```bash
-cp config.env.example config.env    # 填 HZ_TOKEN 等
-python checkin.py --once            # 执行一次(退出码 0=成功/已签,1=失败,2=未配置)
-python checkin.py --loop            # 常驻, 每天 RUN_AT 定时
-```
-
-仅需 Python 3，无需 `pip install`。可配合 systemd / crontab / nohup 常驻。
+免本地构建：把 compose 里 `build: .` 换成 `image: ghcr.io/dimlitter/huazhu-auto-checkin:latest`。手动签到一次：`docker compose run --rm -e MODE=--once huazhu-checkin`。
 
 ---
 

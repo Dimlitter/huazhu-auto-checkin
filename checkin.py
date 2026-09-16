@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026  Dimlitter
 # Licensed under the GNU General Public License v3.0 (see LICENSE).
+# 青龙面板元信息(订阅可自动建任务; 手动添加时在面板里自行设置定时):
+# cron: 5 9 * * *
+# new Env('华住会签到')
 """
 华住会 自动签到 (纯 HTTP)
 ==================================================
@@ -14,9 +17,12 @@
   返回 code: 200=签到成功, 5004=今日已签, 其它=失败(常见为 token 过期需更新)。
 
 用法:
-  python checkin.py           # 执行一次
+  python checkin.py           # 执行一次(青龙面板即用此方式, 由青龙 cron 定时)
   python checkin.py --once
-  python checkin.py --loop     # 常驻, 每天 RUN_AT 定时执行
+  python checkin.py --loop     # 常驻自带定时(无青龙/无系统 cron 时用), 每天 RUN_AT 执行
+
+青龙面板: 变量在面板「环境变量」里设置(HZ_TOKEN 等); 通知走青龙统一通知(notify.py),
+  未配置则回退内置 PushPlus; 青龙环境下 --once 也会按 RANDOM_DELAY 随机错峰。
 
 配置(环境变量, 或同目录 config.env):
   HZ_TOKEN        必填。userToken 值; 多账号用 & 或换行分隔。
@@ -204,12 +210,23 @@ def _status(token):
         return ""
 
 
-def notify(ok, content):
+def _ql_notify(title, content):
+    """青龙面板统一通知(notify.py); 非青龙环境/无此模块时返回 False。"""
+    try:
+        from notify import send  # 青龙运行时自带并加入 sys.path
+    except Exception:
+        return False
+    try:
+        send(title, content)
+        return True
+    except Exception as e:
+        dbg("青龙通知失败", repr(e))
+        return False
+
+
+def _pushplus(title, content):
     if not PUSHPLUS_TOKEN:
         return
-    if (NOTIFY_ON == "fail" and ok) or (NOTIFY_ON == "success" and not ok):
-        return
-    title = "华住会签到 " + ("成功" if ok else "需关注")
     payload = {"token": PUSHPLUS_TOKEN, "title": title, "content": content, "template": "txt"}
     if PUSHPLUS_TOPIC:
         payload["topic"] = PUSHPLUS_TOPIC
@@ -221,6 +238,17 @@ def notify(ok, content):
         dbg("pushplus sent")
     except Exception as e:
         dbg("pushplus err", repr(e))
+
+
+def notify(ok, content):
+    if (NOTIFY_ON == "fail" and ok) or (NOTIFY_ON == "success" and not ok):
+        return
+    title = "华住会签到 " + ("成功" if ok else "需关注")
+    # 优先青龙统一通知(面板已配好各渠道); 否则用内置 PushPlus 兜底
+    if _ql_notify(title, content):
+        dbg("已通过青龙通知")
+        return
+    _pushplus(title, content)
 
 
 def run_once():
@@ -259,11 +287,21 @@ def loop():
         time.sleep(20)
 
 
+def _maybe_delay_qinglong():
+    """青龙(cron 驱动, 跑 --once)环境下也做随机错峰; 手动源码 --once 不延迟。"""
+    if RANDOM_DELAY > 0 and os.environ.get("QL_DIR"):
+        d = random.randint(0, RANDOM_DELAY)
+        if d:
+            log("青龙环境: 随机延迟 %d 秒(约 %.1f 分钟)错峰" % (d, d / 60.0))
+            time.sleep(d)
+
+
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "--once"
     if mode == "--loop":
         loop()
     else:
+        _maybe_delay_qinglong()
         sys.exit(run_once())
 
 
