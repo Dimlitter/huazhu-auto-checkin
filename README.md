@@ -6,6 +6,7 @@
 
 ## 特点
 
+- 🔑 取 token 超简单：PC 网页端 F12 即可，**免 root / 免证书 / 免抓包**
 - ☁️ 任意服务器可跑，无需 redroid / binder / adb / 安卓环境
 - 🪶 仅 Python 标准库，无第三方依赖，镜像极小
 - 🔔 PushPlus 微信推送（成功/失败/token 过期即时提醒）
@@ -31,20 +32,25 @@
 
 ## 一、如何获取 userToken（关键，只需一次）
 
-`userToken` 是你华住会账号的登录令牌，藏在 App/小程序发出的请求 Cookie 里。抓一次即可：
+`userToken` 是你华住会账号的登录令牌（cookie）。推荐用**网页端**取，免 root、免证书、免抓包工具。
 
-**方法（手机抓包，通用）**
-1. 手机装抓包工具：安卓用 **Reqable / HttpCanary / 小黄鸟**，iOS 用 **Stream / Thor / Reqable**。
-2. 打开 **华住会 App**（或微信「华住会」小程序）→ 进「签到」页。
-3. 在抓包记录里找任意发往 `*.huazhu.com` 的请求，查看其 **请求头 Cookie**，找到：
-   ```
-   userToken=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789
-   ```
-   复制 `userToken=` 后面那串（到分号前）就是你要的值。
+### 方法一：PC 网页端 F12（推荐，最简单）
 
-> 若你有 root 手机 + mitmproxy 经验，也可代理抓包，从 `hweb-*.huazhu.com` 等未 pinning 的请求里取 `userToken`。
+> 感谢社区用户在 [issue #1](https://github.com/Dimlitter/huazhu-auto-checkin/issues/1) 提供并实测此方案。
 
-把这串填到 `HZ_TOKEN`（源码用 `config.env`，Docker 用 compose 环境变量）。
+1. 电脑浏览器打开华住官网 **https://www.hworld.com/** ，用**手机号 + 验证码**登录你的账号。
+2. 按 `F12` 打开开发者工具 → **Application**（应用）→ 左侧 **Cookies** → 选中 `https://www.hworld.com`。
+3. 找到名为 **`userToken`** 的 cookie，复制它的**值**。
+
+网页端的 userToken 与 App 端完全等效，可直接用于签到——整个过程无需手机 root、无需安装证书、无需抓包。
+
+### 方法二：手机抓包（需证书；安卓需 root）
+
+网页端取不到时再用此法：
+- **iOS 免越狱** 或 **已 root 的安卓**：安装并信任代理 CA 证书后，用 Reqable / Stream（手机端）或 Fiddler / mitmproxy（电脑做局域网代理）打开华住会 App（或微信小程序）签到页，在任意 `*.huazhu.com` 请求的 Cookie 里找 `userToken=...`。
+- ⚠️ **安卓 7+ 不 root 时 App 不信任用户证书，抓不到**（这正是多数人卡住的点）——请优先用方法一。
+
+把取到的值填到 `HZ_TOKEN`（源码用 `config.env`，青龙用面板环境变量，Docker 用 compose）。
 
 ---
 
@@ -53,9 +59,9 @@
 **能不能永久全自动？—— 不能，但实际几乎不用管。** 诚实说明：
 
 - ⛔ **无法做到完全无人续期**：token 的源头是华住的「手机号+短信验证码」登录，重新登录绕不开短信，机器无法自动收码。这是所有同类方案的共同上限。
-- ✅ **但它很长命**：这是「App 持久登录」令牌（华住 App 你登录一次能几个月不掉），通常**数周到数月**有效，期间脚本天天自动签到。（实测：同一 token 连续每天签到 2 周以上仍有效。）
+- ✅ **但它很长命**：这是「App 持久登录」令牌（华住 App 你登录一次能几个月不掉），通常**数月**有效，期间脚本天天自动签到。（实测：同一 token 连续每天签到 **近 3 个月（80+ 天）仍未过期**。）
 - ✅ **滑动续期（自动保存）**：若华住在响应里下发新 token，脚本会自动存回 `HZ_TOKEN_FILE`，只要天天在用就一直续着。（当前抓包未见其下发，此为防御性能力，未来若开启则零成本自动生效。）
-- ✅ **过期即时告警**：token 一旦失效，脚本立刻 PushPlus 推「token 已过期请更新」，你花 1 分钟重新抓一次即可，绝不会悄无声息漏签。
+- ✅ **过期即时告警**：token 一旦失效，脚本立刻 PushPlus 推「token 已过期请更新」，你花 1 分钟到网页端（方法一）重新取一次即可，绝不会悄无声息漏签。
 
 结论：**偶尔（可能数月一次）手动更新一下 token**，其余时间全自动。
 
